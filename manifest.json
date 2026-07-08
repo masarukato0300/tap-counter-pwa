@@ -1,0 +1,27 @@
+{
+  "name": "タップ集計アプリ",
+  "short_name": "タップ集計",
+  "description": "イベントや来店者を1タップで日別集計できるPWAです。",
+  "id": "./",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "background_color": "#f7f8fb",
+  "theme_color": "#f7f8fb",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
