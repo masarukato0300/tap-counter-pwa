@@ -1,6 +1,14 @@
 const STORAGE_KEY = "tap-counter-daily-v1";
-const COUNT_KEYS = ["male_business", "male_private", "female_business", "female_private"];
+const CATEGORIES = [
+  ["elder_man", "老男"], ["elder_woman", "老女"], ["elder_couple", "老夫婦"],
+  ["middle_man", "おじさん"], ["middle_woman", "おばさん"], ["married_couple", "夫婦"],
+  ["young_man", "若おとこ"], ["young_woman", "若おんな"], ["family", "ファミリー"],
+  ["couple", "カップル"], ["student_man", "学生男子"], ["student_woman", "学生女子"],
+];
+const LEGACY_KEYS = ["male_business", "male_private", "female_business", "female_private"];
+const COUNT_KEYS = [...CATEGORIES.map(([key]) => key), ...LEGACY_KEYS];
 const LABELS = {
+  ...Object.fromEntries(CATEGORIES),
   male_business: "男性ビジネス",
   male_private: "男性プライベート",
   female_business: "女性ビジネス",
@@ -43,6 +51,12 @@ const els = {
 initialize();
 
 function initialize() {
+  document.querySelector(".tap-grid").innerHTML = CATEGORIES.map(([key, label], index) =>
+    `<button class="tap-card tone-${index % 3}" type="button" data-action="increment" data-key="${key}"><span class="category">${label}</span><strong id="count-${key}">0</strong></button>`
+  ).join("");
+  document.querySelector("#correctionGrid").innerHTML = CATEGORIES.map(([key, label]) =>
+    `<button class="secondary-button" type="button" data-correct="${key}" aria-label="${label}を1減らす">${label} −1</button>`
+  ).join("");
   ensureToday();
   const todayParts = parseDateKey(state.today);
   state.viewYear = todayParts.year;
@@ -54,6 +68,30 @@ function initialize() {
 }
 
 function bindEvents() {
+  const sheet = document.querySelector("#actionSheet");
+  const handle = document.querySelector("#sheetHandle");
+  const openSheet = () => { checkDateRollover(); renderCorrections(); if (!sheet.open) sheet.showModal(); };
+  handle.addEventListener("click", openSheet);
+  let startY = null;
+  handle.addEventListener("touchstart", (event) => { startY = event.touches[0].clientY; }, { passive: true });
+  handle.addEventListener("touchmove", (event) => {
+    if (startY !== null && startY - event.touches[0].clientY > 18) { startY = null; openSheet(); }
+  }, { passive: true });
+  handle.addEventListener("touchend", () => { startY = null; });
+  let sheetStartY = null;
+  const sheetHeader = sheet.querySelector("header");
+  sheetHeader.addEventListener("touchstart", (event) => { sheetStartY = event.touches[0].clientY; }, { passive: true });
+  sheetHeader.addEventListener("touchmove", (event) => {
+    if (sheetStartY !== null && event.touches[0].clientY - sheetStartY > 30) { sheetStartY = null; sheet.close(); }
+  }, { passive: true });
+  document.querySelector("#closeSheet").addEventListener("click", () => sheet.close());
+  sheet.addEventListener("click", (event) => { if (event.target === sheet) sheet.close(); });
+  document.querySelector("#correctionGrid").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-correct]");
+    if (button) { changeCount(button.dataset.correct, -1); renderCorrections(); }
+  });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) checkDateRollover(); });
+  window.addEventListener("pageshow", checkDateRollover);
   document.addEventListener("gesturestart", (event) => {
     event.preventDefault();
   });
@@ -71,18 +109,13 @@ function bindEvents() {
     changeCount(button.dataset.key, 1);
   });
 
-  els.editModeButton.addEventListener("click", () => {
-    state.editing = !state.editing;
-    els.mainView.classList.toggle("editing", state.editing);
-    els.editModeButton.setAttribute("aria-pressed", String(state.editing));
-    els.editModeButton.textContent = state.editing ? "修正中" : "修正モード";
-  });
-
   els.resetButton.addEventListener("click", () => {
+    checkDateRollover();
     if (!confirm("本当に今日の集計をリセットしますか？")) return;
     state.data[state.today] = emptyCounts();
     persist();
     renderMain();
+    renderCorrections();
   });
 
   els.openCalendarButton.addEventListener("click", () => {
@@ -107,6 +140,7 @@ function bindEvents() {
 }
 
 function changeCount(key, amount) {
+  checkDateRollover();
   ensureToday();
   const day = state.data[state.today];
   day[key] = Math.max(0, (day[key] || 0) + amount);
@@ -119,8 +153,16 @@ function renderMain() {
   const counts = normalizeCounts(state.data[state.today]);
   els.todayLabel.textContent = formatDateLabel(state.today);
   els.todayTotal.textContent = String(totalOf(counts));
-  COUNT_KEYS.forEach((key) => {
+  CATEGORIES.forEach(([key]) => {
     document.querySelector(`#count-${key}`).textContent = String(counts[key]);
+  });
+}
+
+function renderCorrections() {
+  document.querySelectorAll("[data-correct]").forEach((button) => {
+    const key = button.dataset.correct;
+    button.textContent = `${LABELS[key]} ${state.data[state.today][key]} −1`;
+    button.disabled = !state.data[state.today][key];
   });
 }
 
@@ -143,7 +185,7 @@ function renderCalendar() {
     const button = document.createElement("button");
     button.className = `day-cell${cell.month === month ? "" : " outside"}${cell.key === today ? " today" : ""}`;
     button.type = "button";
-    button.innerHTML = `<span class="date-num">${cell.day}</span><span class="day-total">${totalOf(counts)}人</span>`;
+    button.innerHTML = `<span class="date-num">${cell.day}</span><span class="day-total">${totalOf(counts)}件</span>`;
     button.addEventListener("click", () => openDayDetail(cell.key));
     els.calendarGrid.appendChild(button);
   });
@@ -181,7 +223,7 @@ function renderWeekdaySummary(monthDates) {
 function createStackCard(title, summary) {
   const details = document.createElement("details");
   details.className = "stack-card";
-  details.innerHTML = `<summary><span>${title}</span><span>${summary.total}人</span></summary>`;
+  details.innerHTML = `<summary><span>${title}</span><span>${summary.total}件</span></summary>`;
   const body = document.createElement("div");
   body.className = "summary-grid";
   renderSummaryGrid(body, summary, false);
@@ -201,6 +243,7 @@ function openDayDetail(dateKey) {
 function renderSummaryGrid(container, summary, clear) {
   if (clear) container.innerHTML = "";
   const items = [
+    ...CATEGORIES.map(([key, label]) => [label, summary[key]]),
     ["男性ビジネス", summary.male_business],
     ["男性プライベート", summary.male_private],
     ["女性ビジネス", summary.female_business],
@@ -230,6 +273,7 @@ function exportCsv() {
   const rows = [[
     "日付",
     "曜日",
+    ...CATEGORIES.map(([, label]) => label),
     "男性ビジネス",
     "男性プライベート",
     "女性ビジネス",
@@ -246,6 +290,7 @@ function exportCsv() {
     rows.push([
       dateKey,
       `${WEEKDAYS[getUtcDate(dateKey).getUTCDay()]}曜日`,
+      ...CATEGORIES.map(([key]) => summary[key]),
       summary.male_business,
       summary.male_private,
       summary.female_business,
@@ -307,18 +352,14 @@ function persist() {
 }
 
 function emptyCounts() {
-  return {
-    male_business: 0,
-    male_private: 0,
-    female_business: 0,
-    female_private: 0,
-  };
+  return Object.fromEntries(COUNT_KEYS.map((key) => [key, 0]));
 }
 
 function normalizeCounts(counts = {}) {
   const normalized = emptyCounts();
   COUNT_KEYS.forEach((key) => {
-    normalized[key] = Math.max(0, Number(counts[key] || 0));
+    const value = Number(counts?.[key]);
+    normalized[key] = Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
   });
   return normalized;
 }

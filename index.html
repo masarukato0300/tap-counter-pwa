@@ -28,40 +28,11 @@
         <section class="total-panel" aria-live="polite">
           <span>今日の合計</span>
           <strong id="todayTotal">0</strong>
-          <span>人</span>
+          <span>件</span>
         </section>
 
-        <section class="tap-grid" aria-label="カウントボタン">
-          <button class="tap-card male-business" type="button" data-action="increment" data-key="male_business">
-            <span class="category">男性</span>
-            <span class="purpose">ビジネス</span>
-            <strong id="count-male_business">0</strong>
-            <span class="minus-control" data-action="decrement" data-key="male_business">-1</span>
-          </button>
-          <button class="tap-card male-private" type="button" data-action="increment" data-key="male_private">
-            <span class="category">男性</span>
-            <span class="purpose">プライベート</span>
-            <strong id="count-male_private">0</strong>
-            <span class="minus-control" data-action="decrement" data-key="male_private">-1</span>
-          </button>
-          <button class="tap-card female-business" type="button" data-action="increment" data-key="female_business">
-            <span class="category">女性</span>
-            <span class="purpose">ビジネス</span>
-            <strong id="count-female_business">0</strong>
-            <span class="minus-control" data-action="decrement" data-key="female_business">-1</span>
-          </button>
-          <button class="tap-card female-private" type="button" data-action="increment" data-key="female_private">
-            <span class="category">女性</span>
-            <span class="purpose">プライベート</span>
-            <strong id="count-female_private">0</strong>
-            <span class="minus-control" data-action="decrement" data-key="female_private">-1</span>
-          </button>
-        </section>
-
-        <footer class="main-actions">
-          <button id="editModeButton" class="secondary-button" type="button" aria-pressed="false">修正モード</button>
-          <button id="resetButton" class="danger-button" type="button">今日をリセット</button>
-        </footer>
+        <section class="tap-grid" aria-label="カウントボタン"></section>
+        <button id="sheetHandle" type="button" aria-label="修正とリセットを開く"><span></span></button>
       </section>
 
       <section id="calendarView" class="calendar-view hidden" aria-labelledby="calendarTitle">
@@ -102,6 +73,11 @@
       </section>
     </main>
 
+    <dialog id="actionSheet" class="action-sheet" aria-labelledby="sheetTitle">
+      <header><h2 id="sheetTitle">今日の集計を修正</h2><button id="closeSheet" class="secondary-button" type="button" aria-label="閉じる">×</button></header>
+      <div id="correctionGrid" class="correction-grid"></div>
+      <button id="resetButton" class="danger-button" type="button">今日の集計をリセット</button>
+    </dialog>
     <dialog id="detailDialog" class="detail-dialog">
       <form method="dialog">
         <header>
